@@ -152,13 +152,13 @@ export class CanvasManager {
    * @param {string} gesture - 'DRAW' or 'ERASE'
    * @param {Object} rawPoint - {x, y} normalized coordinates (0.0 to 1.0)
    */
-  draw(handedness, gesture, rawPoint) {
+  draw(handedness, gesture, screenPoint) {
     const state = this.handStates[handedness];
     if (!state) return;
 
-    // 1. Convert normalized coordinates to pixel coordinates (mirrored horizontally)
-    const targetX = (1.0 - rawPoint.x) * this.canvas.width;
-    const targetY = rawPoint.y * this.canvas.height;
+    // 1. Use the pre-calculated screen pixel coordinates
+    const targetX = screenPoint.x;
+    const targetY = screenPoint.y;
 
     // 2. Apply Exponential Moving Average (EMA) smoothing to reduce jitter
     let currX = targetX;

@@ -149,7 +149,15 @@ class AirPaintApp {
       audio: false
     };
 
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia(constraints);
+    } catch (err) {
+      console.warn('La cámara falló con resolución alta. Intentando configuración básica...', err);
+      // Fallback a video básico sin forzar resolución
+      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    }
+
     this.video.srcObject = stream;
     
     return new Promise((resolve) => {
@@ -202,8 +210,8 @@ class AirPaintApp {
         const landmarks = results.landmarks[i];
         
         // MediaPipe handedness represents camera view.
-        // E.g. results.handedness[i].categoryName is "Left" or "Right"
-        const handedness = results.handedness[i].categoryName;
+        // E.g. results.handednesses[i][0].categoryName is "Left" or "Right"
+        const handedness = results.handednesses[i][0].categoryName;
         detectedHands[handedness] = true;
 
         // Display hand info pill
@@ -249,7 +257,7 @@ class AirPaintApp {
 
         // D. Draw stroke paths
         if (isDrawing && activePoint) {
-          this.canvasManager.draw(handedness, gesture, activePoint);
+          this.canvasManager.draw(handedness, gesture, { x: screenX, y: screenY });
         } else {
           // Reset previous line anchor points when not drawing
           this.canvasManager.resetHandTrack(handedness);
