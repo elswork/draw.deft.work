@@ -1,0 +1,658 @@
+/* ==========================================================================
+   AirPaint Design System & CSS Stylesheet
+   ========================================================================== */
+
+:root {
+  --font-title: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  /* Color Palette */
+  --bg-dark: #070913;
+  --bg-card: rgba(13, 17, 39, 0.6);
+  --border-glass: rgba(255, 255, 255, 0.08);
+  --border-active: rgba(0, 242, 254, 0.6);
+  
+  --color-primary: #00f2fe;
+  --color-secondary: #f35588;
+  --color-accent: #fffc46;
+  --color-text: #e2e8f0;
+  --color-muted: #94a3b8;
+  
+  /* Status Colors */
+  --color-online: #10ac84;
+  --color-warning: #ff9f43;
+  --color-danger: #ee5253;
+}
+
+/* Base Reset & Layout */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--bg-dark);
+  color: var(--color-text);
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+  user-select: none;
+}
+
+/* App Container */
+#app-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+}
+
+/* --------------------------------------------------------------------------
+   Webcam Modes Styling
+   -------------------------------------------------------------------------- */
+#webcam {
+  position: fixed;
+  z-index: 1;
+  transform: scaleX(-1); /* Mirror camera feed */
+  transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+  pointer-events: none;
+}
+
+/* Background Mode: Full-screen semi-transparent */
+body.camera-bg-mode {
+  background-color: #030408;
+}
+body.camera-bg-mode #webcam {
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  object-fit: cover;
+  opacity: 0.65;
+  filter: brightness(0.9);
+}
+
+/* PiP Mode: Small floating window */
+body.camera-pip-mode {
+  background: radial-gradient(circle at center, #131835 0%, #060814 100%);
+}
+body.camera-pip-mode #webcam {
+  bottom: 24px;
+  right: 24px;
+  width: 320px;
+  height: 240px;
+  border-radius: 16px;
+  object-fit: cover;
+  opacity: 0.95;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(0, 242, 254, 0.15);
+  pointer-events: auto;
+}
+
+/* Hidden Mode: No webcam displayed */
+body.camera-hidden-mode {
+  background: radial-gradient(circle at center, #101530 0%, #04060f 100%);
+}
+body.camera-hidden-mode #webcam {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  width: 10px;
+  height: 10px;
+  bottom: 0;
+  right: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Canvas Layers
+   -------------------------------------------------------------------------- */
+#paint-canvas,
+#skeleton-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: block;
+}
+
+#paint-canvas {
+  z-index: 2;
+  pointer-events: none;
+}
+
+#skeleton-canvas {
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* --------------------------------------------------------------------------
+   Glassmorphism Styles
+   -------------------------------------------------------------------------- */
+.glass {
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-glass);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.35);
+}
+
+/* --------------------------------------------------------------------------
+   Floating Header
+   -------------------------------------------------------------------------- */
+.app-header {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  right: 20px;
+  height: 64px;
+  border-radius: 16px;
+  z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 24px;
+  pointer-events: auto;
+}
+
+.logo {
+  font-family: var(--font-title);
+  font-weight: 900;
+  font-size: 28px;
+  letter-spacing: -0.5px;
+  color: #fff;
+}
+
+.logo-accent {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.status-indicators {
+  display: flex;
+  gap: 12px;
+}
+
+.status-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 99px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.status-pill .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-pill.loading .dot {
+  background-color: var(--color-warning);
+  box-shadow: 0 0 10px var(--color-warning);
+  animation: pulse-dot 1.5s infinite ease-in-out;
+}
+
+.status-pill.online .dot {
+  background-color: var(--color-online);
+  box-shadow: 0 0 10px var(--color-online);
+}
+
+.status-pill.offline .dot {
+  background-color: var(--color-danger);
+  box-shadow: 0 0 10px var(--color-danger);
+}
+
+/* --------------------------------------------------------------------------
+   Buttons (Air UI & Standard)
+   -------------------------------------------------------------------------- */
+.air-btn {
+  font-family: var(--font-body);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-glass);
+  color: var(--color-text);
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  outline: none;
+}
+
+.air-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.air-btn:active {
+  transform: translateY(0);
+}
+
+.air-btn.active {
+  background: rgba(0, 242, 254, 0.15);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 15px rgba(0, 242, 254, 0.25);
+  color: #fff;
+}
+
+/* --------------------------------------------------------------------------
+   Control Panel
+   -------------------------------------------------------------------------- */
+.control-panel {
+  position: fixed;
+  left: 20px;
+  top: 104px;
+  bottom: 20px;
+  width: 320px;
+  border-radius: 20px;
+  z-index: 10;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  overflow-y: auto;
+  pointer-events: auto;
+}
+
+/* Custom Scrollbar for Control Panel */
+.control-panel::-webkit-scrollbar {
+  width: 6px;
+}
+.control-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+.control-panel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 99px;
+}
+.control-panel::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.control-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.section-label {
+  font-family: var(--font-title);
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.section-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.btn-group {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-group.flex-row {
+  flex-wrap: wrap;
+}
+
+.btn-group.flex-row .air-btn {
+  flex: 1 1 calc(50% - 4px); /* Two buttons per row by default */
+  min-width: 80px;
+}
+
+/* Grid of Preset Colors */
+.grid-colors {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.color-preset {
+  height: 48px;
+  width: 100%;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  background-color: var(--color-theme);
+  position: relative;
+  transition: all 0.25s ease;
+  box-shadow: inset 0 4px 6px rgba(0,0,0,0.25);
+  padding: 0;
+}
+
+.color-preset::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  right: -6px;
+  bottom: -6px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.color-preset:hover {
+  transform: scale(1.1);
+}
+
+.color-preset.active {
+  border-color: #fff;
+  transform: scale(1.05);
+}
+
+.color-preset.active::before {
+  border-color: var(--color-theme);
+  box-shadow: 0 0 15px var(--color-theme);
+}
+
+/* Rainbow Color Preset */
+.rainbow-preset {
+  background: linear-gradient(45deg, #f35588, #ff9f43, #fffc46, #10ac84, #00f2fe, #9b5de5) !important;
+  font-size: 18px;
+}
+
+.rainbow-preset.active::before {
+  background: transparent;
+  border-color: #fff;
+  box-shadow: 0 0 15px rgba(255,255,255,0.4);
+}
+
+/* Brush Size & Camera View Presets */
+.size-preset, .cam-view-btn {
+  font-size: 13px !important;
+  padding: 8px 10px !important;
+}
+
+/* Action Grid (Undo, Redo, Clear, Save) */
+.grid-actions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.action-btn {
+  font-size: 13px !important;
+  padding: 12px 8px !important;
+}
+
+.air-btn.danger:hover {
+  background: rgba(238, 82, 83, 0.15);
+  border-color: var(--color-danger);
+  box-shadow: 0 0 15px rgba(238, 82, 83, 0.2);
+}
+
+.air-btn.danger.active {
+  background: rgba(238, 82, 83, 0.2);
+  border-color: var(--color-danger);
+  box-shadow: 0 0 20px rgba(238, 82, 83, 0.4);
+}
+
+.air-btn.success:hover {
+  background: rgba(16, 172, 132, 0.15);
+  border-color: var(--color-online);
+  box-shadow: 0 0 15px rgba(16, 172, 132, 0.2);
+}
+
+.air-btn.success.active {
+  background: rgba(16, 172, 132, 0.2);
+  border-color: var(--color-online);
+  box-shadow: 0 0 20px rgba(16, 172, 132, 0.4);
+}
+
+/* --------------------------------------------------------------------------
+   Hands State Pills
+   -------------------------------------------------------------------------- */
+.hands-state-container {
+  position: fixed;
+  top: 96px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.hand-state-pill {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+  transform: translateX(20px);
+  animation: slide-in-pill 0.4s forwards cubic-bezier(0.19, 1, 0.22, 1);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.hand-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.hand-dot.left {
+  background-color: var(--color-secondary);
+  box-shadow: 0 0 8px var(--color-secondary);
+}
+.hand-dot.right {
+  background-color: var(--color-primary);
+  box-shadow: 0 0 8px var(--color-primary);
+}
+
+.hand-name {
+  color: #fff;
+}
+
+.hand-brush-preview {
+  margin-left:auto;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.4);
+}
+
+/* --------------------------------------------------------------------------
+   Tutorial Overlay Card
+   -------------------------------------------------------------------------- */
+#tutorial-overlay {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 440px;
+  padding: 32px;
+  border-radius: 24px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(0, 242, 254, 0.1);
+  pointer-events: auto;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+#tutorial-overlay.hidden {
+  opacity: 0;
+  transform: translate(-50%, -45%);
+  pointer-events: none;
+}
+
+#tutorial-overlay h3 {
+  font-family: var(--font-title);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  background: linear-gradient(135deg, #fff, var(--color-primary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+#tutorial-overlay ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+#tutorial-overlay li {
+  font-size: 14px;
+  line-height: 1.6;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  color: #cbd5e1;
+}
+
+.gesture-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+#tutorial-overlay button {
+  margin-top: 8px;
+  width: 100%;
+  padding: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+#tutorial-overlay button:hover {
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.15), rgba(243, 85, 136, 0.15));
+  border-color: var(--color-primary);
+  box-shadow: 0 0 15px rgba(0, 242, 254, 0.15);
+}
+
+/* --------------------------------------------------------------------------
+   Toast / Notification UI
+   -------------------------------------------------------------------------- */
+#toast-container {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.toast {
+  background: rgba(13, 17, 39, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 12px 24px;
+  border-radius: 12px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: slide-up-toast 0.3s forwards cubic-bezier(0.19, 1, 0.22, 1);
+  transition: opacity 0.3s ease;
+}
+
+.toast.info { border-left: 3px solid var(--color-primary); }
+.toast.success { border-left: 3px solid var(--color-online); }
+.toast.warning { border-left: 3px solid var(--color-warning); }
+.toast.error { border-left: 3px solid var(--color-danger); }
+
+/* --------------------------------------------------------------------------
+   Keyframe Animations
+   -------------------------------------------------------------------------- */
+@keyframes pulse-dot {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 0.6;
+  }
+}
+
+@keyframes slide-in-pill {
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-up-toast {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Responsive Design
+   -------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  .control-panel {
+    width: calc(100% - 40px);
+    height: auto;
+    bottom: 20px;
+    top: auto;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 16px;
+    gap: 16px;
+    border-radius: 16px;
+  }
+
+  .control-section {
+    flex: 0 0 240px;
+  }
+
+  body.camera-pip-mode #webcam {
+    width: 160px;
+    height: 120px;
+    bottom: 160px;
+    right: 20px;
+  }
+
+  .hands-state-container {
+    top: auto;
+    bottom: 160px;
+    right: 20px;
+  }
+
+  #tutorial-overlay {
+    width: 90%;
+    max-width: 380px;
+    padding: 20px;
+  }
+}

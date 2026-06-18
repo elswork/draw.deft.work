@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AirPaint - Pintura Interactiva con Gestos</title>
+  <!-- Google Fonts: Inter and Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;600;700;900&display=swap" rel="stylesheet">
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="camera-bg-mode">
+
+  <!-- Main Application Wrapper -->
+  <div id="app-container">
+    
+    <!-- Webcam Stream (Mirrored in CSS) -->
+    <video id="webcam" autoplay playsinline muted></video>
+
+    <!-- Canvas Layer for Drawing Paths -->
+    <canvas id="paint-canvas"></canvas>
+
+    <!-- Canvas Layer for Hand Tracking skeleton overlay, cursor, and Air UI animations -->
+    <canvas id="skeleton-canvas"></canvas>
+
+    <!-- Sleek Glassmorphic Floating Header -->
+    <header class="app-header glass">
+      <div class="logo">
+        <span class="logo-accent">Air</span>Paint
+      </div>
+      <div class="status-indicators">
+        <div id="status-model" class="status-pill loading">
+          <span class="dot"></span>
+          <span class="text">Cargando IA...</span>
+        </div>
+        <div id="status-camera" class="status-pill offline">
+          <span class="dot"></span>
+          <span class="text">Cámara apagada</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Instructions / Tips Overlay (Collapsible) -->
+    <div id="tutorial-overlay" class="glass card">
+      <h3>🎨 ¿Cómo pintar?</h3>
+      <ul>
+        <li>
+          <span class="gesture-icon">🤌</span>
+          <strong>Pintar:</strong> Junta las yemas del dedo índice y pulgar (gesto de pinza).
+        </li>
+        <li>
+          <span class="gesture-icon">✌️</span>
+          <strong>Borrador rápido:</strong> Extiende el índice y el medio juntos (los demás cerrados).
+        </li>
+        <li>
+          <span class="gesture-icon">✋</span>
+          <strong>Navegar Menú:</strong> Extiende la mano para mover el cursor y colócala sobre los botones del menú. Mantenla 1 segundo para hacer click (interfaz sin tocar).
+        </li>
+      </ul>
+      <button id="close-tutorial-btn" class="air-btn glass">Entendido</button>
+    </div>
+
+    <!-- Hands State Display (Multi-hand tracking status) -->
+    <div class="hands-state-container">
+      <div id="left-hand-pill" class="hand-state-pill glass" style="display: none;">
+        <span class="hand-dot left"></span>
+        <span class="hand-name">Mano Izq</span>
+        <span class="hand-brush-preview"></span>
+      </div>
+      <div id="right-hand-pill" class="hand-state-pill glass" style="display: none;">
+        <span class="hand-dot right"></span>
+        <span class="hand-name">Mano Der</span>
+        <span class="hand-brush-preview"></span>
+      </div>
+    </div>
+
+    <!-- Cyber-Glassmorphic Control Panel (Menus) -->
+    <div class="control-panel glass">
+      <!-- Section: Colors -->
+      <div class="control-section">
+        <span class="section-label">Paleta de Colores</span>
+        <div class="btn-group grid-colors">
+          <button class="air-btn color-preset active" data-color="#00f2fe" style="--color-theme: #00f2fe;" title="Cyan"></button>
+          <button class="air-btn color-preset" data-color="#f35588" style="--color-theme: #f35588;" title="Magenta"></button>
+          <button class="air-btn color-preset" data-color="#fffc46" style="--color-theme: #fffc46;" title="Yellow"></button>
+          <button class="air-btn color-preset" data-color="#10ac84" style="--color-theme: #10ac84;" title="Emerald"></button>
+          <button class="air-btn color-preset" data-color="#9b5de5" style="--color-theme: #9b5de5;" title="Purple"></button>
+          <button class="air-btn color-preset" data-color="#ff9f43" style="--color-theme: #ff9f43;" title="Orange"></button>
+          <button class="air-btn color-preset" data-color="#ffffff" style="--color-theme: #ffffff;" title="White"></button>
+          <button class="air-btn color-preset rainbow-preset" data-color="rainbow" title="Arcoíris">🌈</button>
+        </div>
+      </div>
+
+      <!-- Section: Brushes -->
+      <div class="control-section">
+        <span class="section-label">Tipo de Pincel</span>
+        <div class="btn-group flex-row">
+          <button class="air-btn brush-preset active" data-brush="normal" title="Normal">✏️ Clásico</button>
+          <button class="air-btn brush-preset" data-brush="neon" title="Neon Glow">✨ Neón</button>
+          <button class="air-btn brush-preset" data-brush="spray" title="Spray">💨 Spray</button>
+          <button class="air-btn brush-preset" data-brush="calligraphy" title="Calligraphy">✒️ Pluma</button>
+        </div>
+      </div>
+
+      <!-- Section: Brush Size -->
+      <div class="control-section">
+        <div class="section-label-row">
+          <span class="section-label">Tamaño: <span id="brush-size-val">10px</span></span>
+        </div>
+        <div class="btn-group flex-row">
+          <button class="air-btn size-preset" data-size="5">Fino</button>
+          <button class="air-btn size-preset active" data-size="12">Medio</button>
+          <button class="air-btn size-preset" data-size="25">Grueso</button>
+          <button class="air-btn size-preset" data-size="50">Máx</button>
+        </div>
+      </div>
+
+      <!-- Section: Actions (Undo, Redo, Clear, Save) -->
+      <div class="control-section action-section">
+        <div class="btn-group grid-actions">
+          <button id="btn-undo" class="air-btn action-btn" title="Deshacer">↩️ Deshacer</button>
+          <button id="btn-redo" class="air-btn action-btn" title="Rehacer">↪️ Rehacer</button>
+          <button id="btn-clear" class="air-btn action-btn danger" title="Limpiar Lienzo">🗑️ Limpiar</button>
+          <button id="btn-save" class="air-btn action-btn success" title="Descargar PNG">💾 Guardar</button>
+        </div>
+      </div>
+
+      <!-- Section: Camera View modes -->
+      <div class="control-section">
+        <span class="section-label">Modo de Cámara</span>
+        <div class="btn-group flex-row">
+          <button id="btn-cam-bg" class="air-btn cam-view-btn active" data-mode="camera-bg-mode">📺 Fondo</button>
+          <button id="btn-cam-pip" class="air-btn cam-view-btn" data-mode="camera-pip-mode">🖼️ PiP</button>
+          <button id="btn-cam-hidden" class="air-btn cam-view-btn" data-mode="camera-hidden-mode">🚫 Ocultar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alert / Toast Container for quick feedback -->
+    <div id="toast-container"></div>
+  </div>
+
+  <!-- Main JavaScript Modules -->
+  <script type="module" src="app.js"></script>
+</body>
+</html>
