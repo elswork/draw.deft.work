@@ -477,7 +477,7 @@ body.camera-hidden-mode #webcam {
 /* --------------------------------------------------------------------------
    Tutorial Overlay Card
    -------------------------------------------------------------------------- */
-#tutorial-overlay {
+#tutorial-overlay, #game-tutorial-overlay {
   position: fixed;
   top: 50%;
   left: 50%;
@@ -495,13 +495,13 @@ body.camera-hidden-mode #webcam {
   transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
-#tutorial-overlay.hidden {
+#tutorial-overlay.hidden, #game-tutorial-overlay.hidden {
   opacity: 0;
   transform: translate(-50%, -45%);
   pointer-events: none;
 }
 
-#tutorial-overlay h3 {
+#tutorial-overlay h3, #game-tutorial-overlay h3 {
   font-family: var(--font-title);
   font-size: 22px;
   font-weight: 700;
@@ -511,14 +511,14 @@ body.camera-hidden-mode #webcam {
   -webkit-text-fill-color: transparent;
 }
 
-#tutorial-overlay ul {
+#tutorial-overlay ul, #game-tutorial-overlay ul {
   list-style: none;
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-#tutorial-overlay li {
+#tutorial-overlay li, #game-tutorial-overlay li {
   font-size: 14px;
   line-height: 1.6;
   display: flex;
@@ -532,7 +532,7 @@ body.camera-hidden-mode #webcam {
   line-height: 1;
 }
 
-#tutorial-overlay button {
+#tutorial-overlay button, #game-tutorial-overlay button {
   margin-top: 8px;
   width: 100%;
   padding: 12px;
@@ -541,7 +541,7 @@ body.camera-hidden-mode #webcam {
   border-color: rgba(255, 255, 255, 0.15);
 }
 
-#tutorial-overlay button:hover {
+#tutorial-overlay button:hover, #game-tutorial-overlay button:hover {
   background: linear-gradient(135deg, rgba(0, 242, 254, 0.15), rgba(243, 85, 136, 0.15));
   border-color: var(--color-primary);
   box-shadow: 0 0 15px rgba(0, 242, 254, 0.15);
@@ -650,9 +650,140 @@ body.camera-hidden-mode #webcam {
     right: 20px;
   }
 
-  #tutorial-overlay {
+  #tutorial-overlay, #game-tutorial-overlay {
     width: 90%;
     max-width: 380px;
     padding: 20px;
   }
 }
+
+/* ==========================================================================
+   Kinetic Rigging Game UI & Styling Extensions
+   ========================================================================== */
+
+/* Mode Selector styles */
+.mode-selector-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.mode-selector {
+  display: flex;
+  background: rgba(13, 17, 39, 0.5) !important;
+  border-radius: 30px;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.mode-btn {
+  background: transparent;
+  border: none;
+  color: var(--color-muted);
+  padding: 6px 18px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  outline: none;
+}
+
+.mode-btn:hover {
+  color: #fff;
+}
+
+.mode-btn.active {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  color: #fff;
+  box-shadow: 0 4px 15px rgba(0, 242, 254, 0.35);
+  transform: scale(1.02);
+}
+
+/* Game Status Floating Panel */
+#game-status-panel {
+  position: fixed;
+  top: 104px;
+  right: 20px;
+  width: 240px;
+  border-radius: 16px;
+  z-index: 10;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: auto;
+  animation: slide-in-pill 0.4s forwards cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+#game-status-panel h4 {
+  font-family: var(--font-title);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.game-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.game-stat {
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.game-stat .label {
+  font-size: 10px;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.game-stat .value {
+  font-family: var(--font-title);
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 0 10px rgba(255,255,255,0.1);
+}
+
+.game-actions {
+  margin-top: 4px;
+}
+
+.mini-btn {
+  width: 100%;
+  padding: 8px !important;
+  font-size: 12px !important;
+  font-weight: 600;
+  border-radius: 8px !important;
+}
+
+/* Touch feedback for Air UI */
+.active-air-click {
+  animation: air-click-flash 0.4s ease-out;
+}
+
+@keyframes air-click-flash {
+  0% {
+    transform: scale(1.05);
+    background: rgba(0, 242, 254, 0.4);
+    box-shadow: 0 0 20px rgba(0, 242, 254, 0.6);
+  }
+  100% {
+    transform: scale(1);
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow: none;
+  }
+}
+

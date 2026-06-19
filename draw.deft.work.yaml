@@ -1,0 +1,9 @@
+host: draw.deft.work
+htaccess:
+    mode: "off"
+index_files:
+    - index.html
+root: /var/www/draw.deft.work
+ssl:
+    mode: auto
+type: static

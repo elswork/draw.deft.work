@@ -36,6 +36,10 @@ export class CanvasManager {
     this.redoStack = [];
     this.maxHistory = 20;
 
+    // Track points for active stroke (Physics mode utility)
+    this.physicsMode = false;
+    this.activeStrokePoints = { 'Left': [], 'Right': [] };
+
     // Save initial blank canvas state
     setTimeout(() => this.saveHistoryState(), 500);
   }
@@ -123,6 +127,9 @@ export class CanvasManager {
     if (this.handStates[handedness]) {
       this.handStates[handedness].prevPoint = null;
     }
+    if (this.activeStrokePoints && this.activeStrokePoints[handedness]) {
+      this.activeStrokePoints[handedness] = [];
+    }
   }
 
   /**
@@ -170,6 +177,21 @@ export class CanvasManager {
     }
 
     const prev = state.prevPoint || { x: currX, y: currY };
+
+    // Record the current point in active stroke points list if drawing
+    if (gesture === 'DRAW') {
+      if (!this.activeStrokePoints[handedness]) {
+        this.activeStrokePoints[handedness] = [];
+      }
+      this.activeStrokePoints[handedness].push({ x: currX, y: currY });
+    }
+
+    // If physics mode is active, bypass writing directly to canvas 
+    // context. The physics rendering engine loop will handle drawing.
+    if (this.physicsMode) {
+      state.prevPoint = { x: currX, y: currY };
+      return;
+    }
 
     // 3. Select brush color (dynamic rainbow hue calculation if preset is rainbow)
     let brushColor = state.color;
@@ -268,6 +290,17 @@ export class CanvasManager {
 
     // 5. Save point as history
     state.prevPoint = { x: currX, y: currY };
+  }
+
+  /**
+   * Returns current active stroke detail (Physics utility)
+   */
+  getActiveStroke(handedness) {
+    return {
+      points: this.activeStrokePoints[handedness] || [],
+      color: this.handStates[handedness].color,
+      size: this.handStates[handedness].size
+    };
   }
 
   /**

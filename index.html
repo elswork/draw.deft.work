@@ -10,6 +10,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;600;700;900&display=swap" rel="stylesheet">
   <!-- Stylesheet -->
   <link rel="stylesheet" href="styles.css">
+  <!-- Matter.js Physics Engine -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
 </head>
 <body class="camera-bg-mode">
 
@@ -30,6 +32,15 @@
       <div class="logo">
         <span class="logo-accent">Air</span>Paint
       </div>
+      
+      <!-- Mode Selector: Art vs Game Physics -->
+      <div class="mode-selector-container">
+        <div class="mode-selector glass">
+          <button id="btn-mode-art" class="mode-btn active" data-mode="art" title="Dibujo Libre">🎨 Arte</button>
+          <button id="btn-mode-game" class="mode-btn" data-mode="game" title="Juego de Física">🕹️ Física</button>
+        </div>
+      </div>
+
       <div class="status-indicators">
         <div id="status-model" class="status-pill loading">
           <span class="dot"></span>
@@ -41,6 +52,24 @@
         </div>
       </div>
     </header>
+
+    <!-- Game Status Overlay (Floating Panel) -->
+    <div id="game-status-panel" class="glass card" style="display: none;">
+      <h4>🎮 Modo Física</h4>
+      <div class="game-stats-grid">
+        <div class="game-stat">
+          <span class="label">Puntos:</span>
+          <span id="game-score" class="value">0</span>
+        </div>
+        <div class="game-stat">
+          <span class="label">Meta:</span>
+          <span id="game-timer" class="value">0.0s</span>
+        </div>
+      </div>
+      <div class="game-actions">
+        <button id="btn-reset-ball" class="air-btn glass mini-btn" title="Respawn Ball">🔄 Respawn</button>
+      </div>
+    </div>
 
     <!-- Instructions / Tips Overlay (Collapsible) -->
     <div id="tutorial-overlay" class="glass card">
@@ -62,6 +91,26 @@
       <button id="close-tutorial-btn" class="air-btn glass">Entendido</button>
     </div>
 
+    <!-- Game Instructions / Tips Overlay -->
+    <div id="game-tutorial-overlay" class="glass card hidden">
+      <h3>🕹️ Kinetic Rigging</h3>
+      <ul>
+        <li>
+          <span class="gesture-icon">🤌</span>
+          <strong>Construir rampas:</strong> Junta índice y pulgar para dibujar plataformas físicas en tiempo real.
+        </li>
+        <li>
+          <span class="gesture-icon">✌️</span>
+          <strong>Destruir:</strong> Usa el gesto de borrador para eliminar piezas sobrantes.
+        </li>
+        <li>
+          <span class="gesture-icon">🏁</span>
+          <strong>Objetivo:</strong> Guía la bola azul hasta el objetivo verde creando rutas.
+        </li>
+      </ul>
+      <button id="close-game-tutorial-btn" class="air-btn glass">¡A Jugar!</button>
+    </div>
+
     <!-- Hands State Display (Multi-hand tracking status) -->
     <div class="hands-state-container">
       <div id="left-hand-pill" class="hand-state-pill glass" style="display: none;">
@@ -76,8 +125,18 @@
       </div>
     </div>
 
+    <!-- Toggle Panel Button -->
+    <button id="panel-toggle-btn" class="air-btn glass panel-toggle-btn" title="Mostrar Herramientas">
+      🛠️ Herramientas
+    </button>
+
     <!-- Cyber-Glassmorphic Control Panel (Menus) -->
-    <div class="control-panel glass">
+    <div id="control-panel" class="control-panel glass collapsed">
+      <div class="panel-header">
+        <span class="panel-title">🛠️ Herramientas</span>
+        <button id="panel-close-btn" class="air-btn glass icon-btn" title="Ocultar Panel">❌</button>
+      </div>
+
       <!-- Section: Colors -->
       <div class="control-section">
         <span class="section-label">Paleta de Colores</span>

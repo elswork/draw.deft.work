@@ -6,6 +6,7 @@
 import { FilesetResolver, HandLandmarker } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/+esm';
 import { GestureDetector } from './gesture-detector.js';
 import { CanvasManager } from './canvas-manager.js';
+import { PhysicsManager } from './physics-manager.js';
 
 // Configuration
 const HOVER_TRIGGER_MS = 1000; // Time needed to hover over a button to "click" it
@@ -34,11 +35,14 @@ class AirPaintApp {
     // Managers & Detectors
     this.canvasManager = new CanvasManager(this.paintCanvas);
     this.gestureDetector = new GestureDetector();
+    this.physicsManager = new PhysicsManager(this.paintCanvas);
     
     // Application States
     this.handLandmarker = null;
     this.isStreaming = false;
     this.lastVideoTime = -1;
+    this.lastTime = performance.now();
+    this.gameMode = 'art'; // 'art' or 'game'
 
     // Track state transitions to capture undo states on start of stroke
     this.wasDrawing = {
@@ -51,6 +55,9 @@ class AirPaintApp {
       'Left': { button: null, startTime: 0, triggered: false },
       'Right': { button: null, startTime: 0, triggered: false }
     };
+
+    // Mouse Fallback state
+    this.isMouseDown = false;
 
     // Initialize
     this.init();
@@ -69,6 +76,8 @@ class AirPaintApp {
 
     // 2. Bind traditional UI events (mouse clicks)
     this.bindUIEvents();
+    this.bindGameEvents();
+    this.bindMouseEvents();
 
     // 3. Initialize MediaPipe HandLandmarker
     try {
@@ -89,13 +98,15 @@ class AirPaintApp {
       this.isStreaming = true;
       this.updateCameraStatus('online', 'Cámara Activa');
       this.showToast('📷 Cámara activada. ¡Listo para pintar!', 'info');
-      
-      // Begin the detection and render loop
-      window.requestAnimationFrame((time) => this.loop(time));
     } catch (err) {
-      this.updateCameraStatus('offline', 'Error de Cámara');
-      console.error(err);
+      this.updateCameraStatus('offline', 'Cámara no disponible');
+      console.warn('Camera failed, enabling mouse-only fallback loop:', err);
+      this.isStreaming = true; // Enable loop to run anyway for mouse fallbacks
+      this.showToast('⚠️ Cámara bloqueada. Usa el ratón/táctil para pintar.', 'warning');
     }
+
+    // Begin the detection and render loop
+    window.requestAnimationFrame((time) => this.loop(time));
   }
 
   /**
@@ -174,6 +185,11 @@ class AirPaintApp {
   loop(timestamp) {
     if (!this.isStreaming) return;
 
+    // Calculate frame delta time
+    const now = performance.now();
+    const dt = now - this.lastTime;
+    this.lastTime = now;
+
     // Run hand landmarker inference if a new video frame is available
     if (this.video.currentTime !== this.lastVideoTime) {
       this.lastVideoTime = this.video.currentTime;
@@ -182,9 +198,27 @@ class AirPaintApp {
         const results = this.handLandmarker.detectForVideo(this.video, timestamp);
         
         // Render skeletons, cursors, paths, and Air UI
-        this.processFrame(results);
+        this.processFrame(results, dt);
       } catch (err) {
         console.error('Error running detection: ', err);
+      }
+    } else if (this.gameMode === 'game') {
+      // If camera frame hasn't updated but we are in physics mode, we still need 
+      // to step simulation and draw active strokes at 60 FPS.
+      this.physicsManager.update(dt);
+      
+      const activeStrokes = [
+        this.canvasManager.getActiveStroke('Left'),
+        this.canvasManager.getActiveStroke('Right')
+      ];
+      this.physicsManager.render(activeStrokes);
+      
+      // Update timer feedback in UI
+      if (this.physicsManager.ballInGoal) {
+        const sec = (this.physicsManager.goalTimeMs / 1000).toFixed(1);
+        document.getElementById('game-timer').innerText = `${sec}s`;
+      } else {
+        document.getElementById('game-timer').innerText = '0.0s';
       }
     }
 
@@ -194,7 +228,7 @@ class AirPaintApp {
   /**
    * Process results and draw elements on screen
    */
-  processFrame(results) {
+  processFrame(results, dt) {
     // 1. Clear skeletal canvas layer
     this.skeletonCtx.clearRect(0, 0, this.skeletonCanvas.width, this.skeletonCanvas.height);
 
@@ -250,14 +284,31 @@ class AirPaintApp {
         // C. Stroke State Change Checking: Save history state on draw start
         const isDrawing = (gesture === 'DRAW' || gesture === 'ERASE');
         if (isDrawing && !this.wasDrawing[handedness]) {
-          // Save canvas snapshot before starting a new stroke
-          this.canvasManager.saveHistoryState();
+          // Save canvas snapshot before starting a new stroke (if in classic Art Mode)
+          if (this.gameMode === 'art') {
+            this.canvasManager.saveHistoryState();
+          }
         }
+        
+        // Physics Mode Transition Action: If released the pinch (drawing stopped), turn line into physics body
+        if (!isDrawing && this.wasDrawing[handedness] && this.gameMode === 'game') {
+          const activeStroke = this.canvasManager.getActiveStroke(handedness);
+          if (activeStroke && activeStroke.points.length > 1) {
+            this.physicsManager.addDrawnRamp(activeStroke.points, activeStroke.size, activeStroke.color);
+          }
+        }
+        
         this.wasDrawing[handedness] = isDrawing;
 
         // D. Draw stroke paths
         if (isDrawing && activePoint) {
-          this.canvasManager.draw(handedness, gesture, { x: screenX, y: screenY });
+          if (gesture === 'ERASE' && this.gameMode === 'game') {
+            // In physics mode, eraser deletes colliders
+            const state = this.canvasManager.handStates[handedness];
+            this.physicsManager.eraseAt(screenX, screenY, state.size * 2.5 / 2);
+          } else {
+            this.canvasManager.draw(handedness, gesture, { x: screenX, y: screenY });
+          }
         } else {
           // Reset previous line anchor points when not drawing
           this.canvasManager.resetHandTrack(handedness);
@@ -281,10 +332,37 @@ class AirPaintApp {
     // Hide pills of hands not visible in current frame
     for (const handedness of ['Left', 'Right']) {
       if (!detectedHands[handedness]) {
+        // If hand is lost while drawing, convert lines to physics body
+        if (this.wasDrawing[handedness] && this.gameMode === 'game') {
+          const activeStroke = this.canvasManager.getActiveStroke(handedness);
+          if (activeStroke && activeStroke.points.length > 1) {
+            this.physicsManager.addDrawnRamp(activeStroke.points, activeStroke.size, activeStroke.color);
+          }
+        }
+        
         this.updateHandPill(handedness, false);
         this.resetAirUIHover(handedness);
         this.canvasManager.resetHandTrack(handedness);
         this.wasDrawing[handedness] = false;
+      }
+    }
+
+    // Render Physics layer in real-time if in Game Mode
+    if (this.gameMode === 'game') {
+      this.physicsManager.update(dt);
+      
+      const activeStrokes = [
+        this.canvasManager.getActiveStroke('Left'),
+        this.canvasManager.getActiveStroke('Right')
+      ];
+      this.physicsManager.render(activeStrokes);
+      
+      // Update HUD timer
+      if (this.physicsManager.ballInGoal) {
+        const sec = (this.physicsManager.goalTimeMs / 1000).toFixed(1);
+        document.getElementById('game-timer').innerText = `${sec}s`;
+      } else {
+        document.getElementById('game-timer').innerText = '0.0s';
       }
     }
   }
@@ -518,6 +596,15 @@ class AirPaintApp {
       this.showToast('¡Modo de dibujo activado!', 'success');
     });
 
+    const closeGameTutBtn = document.getElementById('close-game-tutorial-btn');
+    const gameTutorialOverlay = document.getElementById('game-tutorial-overlay');
+    if (closeGameTutBtn) {
+      closeGameTutBtn.addEventListener('click', () => {
+        gameTutorialOverlay.classList.add('hidden');
+        this.showToast('¡A construir!', 'success');
+      });
+    }
+
     // 2. Color picker Preset click
     const colors = document.querySelectorAll('.color-preset');
     colors.forEach(btn => {
@@ -600,6 +687,112 @@ class AirPaintApp {
           this.resizeSkeletonCanvas();
         }, 100);
       });
+    });
+  }
+
+  /**
+   * Binds Game events (mode switcher, respawns, window events)
+   */
+  bindGameEvents() {
+    const btnArt = document.getElementById('btn-mode-art');
+    const btnGame = document.getElementById('btn-mode-game');
+    const gamePanel = document.getElementById('game-status-panel');
+
+    btnArt.addEventListener('click', () => {
+      if (this.gameMode === 'art') return;
+      this.gameMode = 'art';
+      
+      btnArt.classList.add('active');
+      btnGame.classList.remove('active');
+      gamePanel.style.display = 'none';
+
+      // Reset managers
+      this.canvasManager.physicsMode = false;
+      this.physicsManager.stop();
+      this.canvasManager.clear();
+      
+      this.showToast('🎨 Modo Arte activado: Dibujo libre', 'success');
+    });
+
+    btnGame.addEventListener('click', () => {
+      if (this.gameMode === 'game') return;
+      this.gameMode = 'game';
+      
+      btnGame.classList.add('active');
+      btnArt.classList.remove('active');
+      gamePanel.style.display = 'flex';
+
+      // Initialize physics engine
+      this.canvasManager.physicsMode = true;
+      this.canvasManager.clear();
+      this.physicsManager.start();
+      
+      const gameTutorialOverlay = document.getElementById('game-tutorial-overlay');
+      if (gameTutorialOverlay) {
+        gameTutorialOverlay.classList.remove('hidden');
+      }
+
+      this.showToast('🕹️ Modo Física activado: ¡Dibuja rampas!', 'success');
+    });
+
+    document.getElementById('btn-reset-ball').addEventListener('click', () => {
+      if (this.gameMode === 'game') {
+        this.physicsManager.spawnBall();
+        this.showToast('🔄 Bola reaparecida en origen', 'info');
+      }
+    });
+
+    // Capture custom victory levels events
+    window.addEventListener('airpaint:level_win', (e) => {
+      document.getElementById('game-score').innerText = e.detail.score;
+      document.getElementById('game-timer').innerText = '0.0s';
+      this.showToast(`🎉 ¡Nivel Completado! Avanzas a Nivel ${e.detail.level}`, 'success');
+    });
+  }
+
+  /**
+   * Binds physical mouse fallback events for local drawing testing
+   */
+  bindMouseEvents() {
+    window.addEventListener('mousedown', (e) => {
+      // Don't draw if click is inside UI panels
+      if (e.target.closest('.control-panel') || 
+          e.target.closest('.app-header') || 
+          e.target.closest('#tutorial-overlay') || 
+          e.target.closest('#game-status-panel')) {
+        return;
+      }
+      this.isMouseDown = true;
+      const x = e.clientX;
+      const y = e.clientY;
+      
+      if (this.gameMode === 'art') {
+        this.canvasManager.saveHistoryState();
+        this.canvasManager.draw('Right', 'DRAW', { x, y });
+      } else {
+        this.canvasManager.resetHandTrack('Right');
+        this.canvasManager.draw('Right', 'DRAW', { x, y });
+      }
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!this.isMouseDown) return;
+      const x = e.clientX;
+      const y = e.clientY;
+      this.canvasManager.draw('Right', 'DRAW', { x, y });
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (!this.isMouseDown) return;
+      this.isMouseDown = false;
+      
+      if (this.gameMode === 'game') {
+        const activeStroke = this.canvasManager.getActiveStroke('Right');
+        if (activeStroke && activeStroke.points.length > 1) {
+          this.physicsManager.addDrawnRamp(activeStroke.points, activeStroke.size, activeStroke.color);
+        }
+      }
+      this.canvasManager.resetHandTrack('Right');
     });
   }
 
