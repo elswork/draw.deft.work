@@ -9,7 +9,8 @@ FILES_TO_DEPLOY = [
     "app.js",
     "canvas-manager.js",
     "gesture-detector.js",
-    "styles.css"
+    "styles.css",
+    "physics-manager.js"
 ]
 
 M2_API = "http://192.168.1.75:5051/system/write-config"
@@ -41,7 +42,7 @@ def deploy_to_gcp(filename, content):
     b64_content = base64.b64encode(content.encode('utf-8')).decode('utf-8')
     cmd = [
         "ssh", "-o", "StrictHostKeyChecking=no", "-i", SSH_KEY, f"pirate@{GCP_IP}",
-        f"mkdir -p {GCP_TARGET_DIR} && echo '{b64_content}' | base64 -d > {GCP_TARGET_DIR}/{filename}"
+        f"sudo mkdir -p {GCP_TARGET_DIR} && echo '{b64_content}' | base64 -d | sudo tee {GCP_TARGET_DIR}/{filename} > /dev/null"
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode == 0:

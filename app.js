@@ -605,6 +605,23 @@ class AirPaintApp {
       });
     }
 
+    // Panel Toggle Events
+    const panelToggleBtn = document.getElementById('panel-toggle-btn');
+    const panelCloseBtn = document.getElementById('panel-close-btn');
+    const controlPanel = document.getElementById('control-panel');
+
+    if (panelToggleBtn && panelCloseBtn && controlPanel) {
+      panelToggleBtn.addEventListener('click', () => {
+        controlPanel.classList.remove('collapsed');
+        panelToggleBtn.classList.add('hidden');
+      });
+
+      panelCloseBtn.addEventListener('click', () => {
+        controlPanel.classList.add('collapsed');
+        panelToggleBtn.classList.remove('hidden');
+      });
+    }
+
     // 2. Color picker Preset click
     const colors = document.querySelectorAll('.color-preset');
     colors.forEach(btn => {
